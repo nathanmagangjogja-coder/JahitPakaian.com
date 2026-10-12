@@ -37,6 +37,7 @@ export default function ContactClient({
   address,
 }: ContactClientProps) {
   const showAvailable = !whatsapp && !phone && !email && !address;
+  const soon = <span className="text-slate-500 italic">Segera tersedia</span>;
   const { toast } = useToast();
   const [submitting, setSubmitting] = React.useState(false);
   const [waLink, setWaLink] = React.useState<string | null>(null);
@@ -146,13 +147,7 @@ export default function ContactClient({
                   <div className="flex-1">
                     <h3 className="font-bold text-brand-text">Telepon / WA</h3>
                     <p className="text-sm mt-1">
-                      {showAvailable ? (
-                        <span className="text-slate-500 italic">
-                          Segera tersedia
-                        </span>
-                      ) : (
-                        <span className="text-slate-700">{phone || whatsapp}</span>
-                      )}
+                      {phone || whatsapp ? <span className="text-slate-700">{phone || whatsapp}</span> : soon}
                     </p>
                   </div>
                 </CardContent>
@@ -165,12 +160,12 @@ export default function ContactClient({
                   <div className="flex-1">
                     <h3 className="font-bold text-brand-text">Email</h3>
                     <p className="text-sm mt-1">
-                      {showAvailable ? (
-                        <span className="text-slate-500 italic">
-                          Segera tersedia
-                        </span>
+                      {email ? (
+                        <a href={`mailto:${email}`} className="break-all text-slate-700 hover:text-brand-green">
+                          {email}
+                        </a>
                       ) : (
-                        <span className="text-slate-700">{email}</span>
+                        soon
                       )}
                     </p>
                   </div>
@@ -199,11 +194,7 @@ export default function ContactClient({
                   <div className="flex-1">
                     <h3 className="font-bold text-brand-text">Alamat Workshop</h3>
                     <p className="text-sm text-slate-600 mt-1">
-                      {showAvailable ? (
-                        <span className="italic">Segera tersedia</span>
-                      ) : (
-                        <span>{address}</span>
-                      )}
+                      {address ? <span className="whitespace-pre-line">{address}</span> : soon}
                     </p>
                   </div>
                 </CardContent>

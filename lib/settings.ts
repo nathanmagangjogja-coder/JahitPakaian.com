@@ -93,24 +93,27 @@ export async function getBusinessSettingsRemote(): Promise<BusinessSettings> {
   // kosong (mis. admin belum pernah mengisi) atau kalau fetch-nya sendiri gagal total
   // (lihat dua early-return di atas). Sebelumnya urutannya terbalik (local selalu menang),
   // sehingga draf lama di satu browser bisa menutupi perubahan baru di database selamanya.
+  // Data database adalah satu-satunya sumber kebenaran; cache lokal sengaja TIDAK dipakai di sini
+  // supaya form admin menampilkan isi yang benar-benar tersimpan (dan terlihat publik).
+  const cache: Partial<BusinessSettings> = {};
   const fallback = envDefaults();
   return {
-    whatsapp: data.whatsapp ?? local.whatsapp ?? fallback.whatsapp,
-    phone: data.phone ?? local.phone ?? fallback.phone,
-    email: data.email ?? local.email ?? fallback.email,
-    address: data.address ?? local.address ?? fallback.address,
-    operatingHours: data.operating_hours ?? local.operatingHours ?? fallback.operatingHours,
-    websiteUrl: data.website_url ?? local.websiteUrl ?? fallback.websiteUrl,
-    instagramUrl: data.instagram_url ?? local.instagramUrl ?? "",
-    facebookUrl: data.facebook_url ?? local.facebookUrl ?? "",
-    tiktokUrl: data.tiktok_url ?? local.tiktokUrl ?? "",
-    youtubeUrl: data.youtube_url ?? local.youtubeUrl ?? "",
+    whatsapp: data.whatsapp ?? cache.whatsapp ?? fallback.whatsapp,
+    phone: data.phone ?? cache.phone ?? fallback.phone,
+    email: data.email ?? cache.email ?? fallback.email,
+    address: data.address ?? cache.address ?? fallback.address,
+    operatingHours: data.operating_hours ?? cache.operatingHours ?? fallback.operatingHours,
+    websiteUrl: data.website_url ?? cache.websiteUrl ?? fallback.websiteUrl,
+    instagramUrl: data.instagram_url ?? cache.instagramUrl ?? "",
+    facebookUrl: data.facebook_url ?? cache.facebookUrl ?? "",
+    tiktokUrl: data.tiktok_url ?? cache.tiktokUrl ?? "",
+    youtubeUrl: data.youtube_url ?? cache.youtubeUrl ?? "",
     // Angka dari Supabase kadang datang sebagai string tergantung tipe kolom,
     // jadi di-parse dulu supaya peta tidak gagal muncul hanya karena typeof-nya "string".
-    mapLat: parseCoordValue(data.map_lat) ?? local.mapLat ?? fallback.mapLat,
-    mapLng: parseCoordValue(data.map_lng) ?? local.mapLng ?? fallback.mapLng,
+    mapLat: parseCoordValue(data.map_lat) ?? cache.mapLat ?? fallback.mapLat,
+    mapLng: parseCoordValue(data.map_lng) ?? cache.mapLng ?? fallback.mapLng,
     photoMaxDimension:
-      data.photo_max_dimension ?? local.photoMaxDimension ?? fallback.photoMaxDimension,
+      data.photo_max_dimension ?? cache.photoMaxDimension ?? fallback.photoMaxDimension,
     logoUrl: data.logo_url || undefined,
     faviconUrl: data.favicon_url || undefined,
   };
@@ -131,15 +134,22 @@ export async function updateBusinessSettingsRemote(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     });
+    if (res.status === 401) {
+      // Sesi login habis: kirim ke halaman login supaya tidak "tersimpan" palsu.
+      if (isBrowser()) window.location.href = "/admin/login";
+      return false;
+    }
     const json = await res.json().catch(() => null);
     if (res.ok && json?.success) {
       saveLocalSettings(input); // cache lokal, dipakai fallback kalau offline
       return true;
     }
   } catch {
-    // lanjut ke fallback lokal di bawah
+    // jaringan gagal -> dianggap gagal simpan
   }
-  return saveLocalSettings(input);
+  // JANGAN pura-pura sukses: sebelumnya data hanya ditulis ke localStorage browser dan
+  // dilaporkan "tersimpan", padahal website publik tidak pernah menerimanya.
+  return false;
 }
 
 export function formatWhatsAppNumber(raw: string | null | undefined): string | null {
